@@ -4,31 +4,41 @@
 #include <math.h>
 #include "mdsp_rtos.h"
 #include "task.h"
-static int id1 = 1;
-static int id2 = 2;
-static void task_sine(void *arg){
-    int id = *(int*)arg;
-    static float phase = 0.0f;
-    const float freq = 440.0f;
-    const float sr = 1000.0f;
-    phase += 2.0f * 3.14159265F * freq / sr;
-    if (phase > 2.0F * 3.14159265f) phase -= 2.0F * 3.14159265f;
-    printf("[sine-%d] phase=%.3f uptime=%llu ms\n",id,phase,(unsigned long long)rtos_uptime_ms());
+#include "semaphore.h"
+
+static semaphore_t sem;
+static int shared_counter = 0;
+
+static void task1(void *arg) {
+    for(int i = 0; i < 5; ++i) {
+        semaphore_take(&sem);
+	    int temp = shared_counter;
+	    printf("task 1 using resource : %d -> %d \n", temp, temp + 1);
+	    shared_counter = temp+1;
+	    semaphore_give(&sem);
+        task_yield();
+    }
 }
 
-static void task_filter(void *arg) {
-    int id = *(int*)arg;
-    static int counter = 0;
-    counter++;
-    printf("[filter-%d] run %d uptime=%llu ms\n",id,counter,(unsigned long long)rtos_uptime_ms());
+static void task2(void *arg) {
+    for(int i = 0; i < 5; ++i) {
+        semaphore_take(&sem);
+	    int temp = shared_counter;
+	    printf("task 2 using resource : %d -> %d \n", temp, temp + 1);
+	    shared_counter = temp+1;
+	    semaphore_give(&sem);
+        task_yield();
+    }
 }
 
 int main(void) {
-    printf("M-DSP RTOS Phase 1 demo\n");
-    rtos_init();
+    printf("M-DSP RTOS Phase 2 demo\n");
 
-    task_create("sine",task_sine,&id1, 500);
-    task_create("filter", task_filter,&id2, 1000);
+    rtos_init();
+    semaphore_init(&sem,1);
+
+    task_create("t1",task1,(void*)(intptr_t)1, 0);
+    task_create("t2",task2,(void*)(intptr_t)2, 0);
 
     rtos_start();
     return 0;
