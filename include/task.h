@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <port.h>
 
 #define MAX_TASKS 8
 #define TASK_STACK_SIZE (64*1024)
@@ -25,7 +26,7 @@ typedef struct tcb{
     uint32_t period_ms;
     uint64_t next_run_ms;
     void *stack;
-    void *uctx;
+    port_context_t *ctx;
 } tcb_t;
 
 int task_create(const char *name, task_fn_t fn, void *arg, uint32_t period_ms);

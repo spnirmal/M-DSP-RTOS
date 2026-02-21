@@ -1,14 +1,12 @@
-#define _XOPEN_SOURCE 700
-#include <stdio.h>
-#include <unistd.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include "task.h"
-#include <ucontext.h>
+#include "port.h"
+
+port_context_t *sched_ctx;
 
 void rtos_init(void) {
-    if (getcontext((ucontext_t*)&((ucontext_t){0})) == -1) {
-
-    }
+    port_init();
 }
 
 int _rtos_task_count(void);
@@ -16,16 +14,14 @@ tcb_t* _rtos_task_get(int idx);
 void _rtos_set_current(int idx);
 int _rtos_get_current(void);
 
-static void scheduler_tick_loop(void) {
-    extern ucontext_t sched_ctx;
-
-    if(getcontext(&sched_ctx) == -1){
-        perror("getcontext");
-        return;
-    }
+static void scheduler_loop(void) {
+    
+    sched_ctx = malloc(PORT_CONTEXT_SIZE);
+    if (!sched_ctx) return;
+    port_context_create(sched_ctx,NULL,NULL,0);
 
     while(1) {
-        uint64_t now = rtos_uptime_ms();
+        uint64_t now = port_get_time_ms();
         int n = _rtos_task_count();
         int did_run = 0;
 
@@ -39,7 +35,7 @@ static void scheduler_tick_loop(void) {
                     _rtos_set_current(i);
                     t->state = TASK_RUNNING;
 
-                    swapcontext(&sched_ctx, (ucontext_t*)t->uctx);
+                    port_context_switch(sched_ctx, t->ctx);
 
                     if(t->state == TASK_RUNNING) t->state = TASK_READY;
                     t->next_run_ms += t->period_ms;
@@ -49,7 +45,7 @@ static void scheduler_tick_loop(void) {
             else if(t->state == TASK_READY) {
                 _rtos_set_current(i);
                 t->state = TASK_RUNNING;
-                swapcontext(&sched_ctx,(ucontext_t*)t->uctx);
+                port_context_switch(sched_ctx, t->ctx);
                 if(t->state == TASK_RUNNING) t->state = TASK_READY;
                 did_run = 1;
             }
@@ -60,7 +56,7 @@ static void scheduler_tick_loop(void) {
             }
         }
         if(!did_run) {
-            sleep(1000);
+            
         }
     }
 }
@@ -68,5 +64,5 @@ static void scheduler_tick_loop(void) {
 
 
 void rtos_start(void) {
-    scheduler_tick_loop();
+    scheduler_loop();
 }

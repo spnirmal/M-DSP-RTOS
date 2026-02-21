@@ -2,39 +2,35 @@ CC := gcc
 CFLAGS := -Wall -Wextra -g -std=gnu11
 LDFLAGS :=
 
-# Directories
+PORT ?= posix
+
 SRCDIR := src
+PORTDIR := port/$(PORT)
 INCDIR := include
 OBJDIR := build
 BINDIR := bin
 
-# Automatically include all subdirectories under include/
-CFLAGS += $(addprefix -I,$(shell find $(INCDIR) -type d))
+CFLAGS += -I$(INCDIR)
+CFLAGS += -I$(PORTDIR)
 
-# Source and object files
-SRC := $(shell find $(SRCDIR) -name '*.c')
-OBJ := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC))
+SRC := $(wildcard $(SRCDIR)/*.c)
+SRC += $(wildcard $(PORTDIR)/*.c)
+
+OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(SRC))
 
 TARGET := $(BINDIR)/mdsp_rtos
 
-# Default target
-all: dirs $(TARGET)
+all: $(TARGET)
 
-# Create build and bin directories
-dirs:
-	@mkdir -p $(OBJDIR) $(BINDIR)
+$(TARGET): $(OBJ)
+	@mkdir -p $(BINDIR)
+	$(CC) $(OBJ) -o $@
 
-# Compile each .c file into a corresponding .o file (keeping directory structure)
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
+$(OBJDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Link all objects
-$(TARGET): $(OBJ)
-	$(CC) $(LDFLAGS) $^ -o $@
-
-# Clean build and binary files
 clean:
 	rm -rf $(OBJDIR) $(BINDIR)
 
-.PHONY: all clean dirs
+.PHONY: all clean

@@ -1,0 +1,96 @@
+#define _XOPEN_SOURCE 700
+
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <signal.h>
+#include <ucontext.h>
+#include "port.h"
+
+/* ============================= */
+/* Context Definition (Opaque)   */
+/* ============================= */
+
+struct port_context {
+    ucontext_t uc;
+};
+
+/* ============================= */
+/* Internal Helpers              */
+/* ============================= */
+
+static sigset_t critical_mask;
+
+/* ============================= */
+/* Port Initialization           */
+/* ============================= */
+
+void port_init(void)
+{
+    /* Block no signals initially */
+    sigemptyset(&critical_mask);
+}
+
+/* ============================= */
+/* Context Creation              */
+/* ============================= */
+
+int port_context_create(
+    port_context_t *ctx,
+    void (*entry)(void),
+    void *stack,
+    size_t stack_size)
+{
+    if (!ctx || !entry || !stack)
+        return -1;
+
+    if (getcontext(&ctx->uc) == -1)
+        return -1;
+
+    ctx->uc.uc_stack.ss_sp = stack;
+    ctx->uc.uc_stack.ss_size = stack_size;
+    ctx->uc.uc_stack.ss_flags = 0;
+    ctx->uc.uc_link = NULL;  /* scheduler handles return */
+
+    makecontext(&ctx->uc, entry, 0);
+
+    return 0;
+}
+
+/* ============================= */
+/* Context Switch                */
+/* ============================= */
+
+void port_context_switch(
+    port_context_t *from,
+    port_context_t *to)
+{
+    swapcontext(&from->uc, &to->uc);
+}
+
+/* ============================= */
+/* Time Source                   */
+/* ============================= */
+
+uint64_t port_get_time_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+
+    return (uint64_t)ts.tv_sec * 1000ULL +
+           ts.tv_nsec / 1000000ULL;
+}
+
+/* ============================= */
+/* Critical Section              */
+/* ============================= */
+
+void port_enter_critical(void)
+{
+    sigprocmask(SIG_BLOCK, &critical_mask, NULL);
+}
+
+void port_exit_critical(void)
+{
+    sigprocmask(SIG_UNBLOCK, &critical_mask, NULL);
+}
