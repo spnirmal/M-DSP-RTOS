@@ -1,43 +1,43 @@
 CC := xtensa-esp32s3-elf-gcc
 OBJCOPY := xtensa-esp32s3-elf-objcopy
 
-CFLAGS := -Wall -Wextra -Os -ffreestanding -nostdlib
-CFLAGS += -mlongcalls
+# compiler flags
+CFLAGS := -Wall -Wextra -Os -ffreestanding -nostdlib -mlongcalls
+CFLAGS += -Iinclude          # project include directory
 
 LDFLAGS := -T linker.ld -nostdlib
 
-SRCDIR := src
-OBJDIR := build
-BINDIR := bin
+# source files used in the firmware
+# top-level C/ASM, RTOS core, port layer, etc.
+SRC := main.c interrupt.c startup.S vectors.S \
+       $(wildcard src/*.c) $(wildcard src/*.S) \
+       $(wildcard port/esp32s3/*.c) $(wildcard port/esp32s3/*.S)
 
-SRC := $(wildcard $(SRCDIR)/*.c)
-SRC += $(wildcard $(SRCDIR)/*.S)
+OBJ := $(patsubst %.c,build/%.o,$(SRC))
+OBJ := $(patsubst %.S,build/%.o,$(OBJ))
 
-OBJ := $(patsubst $(SRCDIR)/%, $(OBJDIR)/%, $(SRC:.c=.o))
-OBJ := $(OBJ:.S=.o)
-
-TARGET := $(BINDIR)/kernel.elf
-BIN := $(BINDIR)/kernel.bin
+TARGET := bin/kernel.elf
+BIN    := bin/kernel.bin
 
 all: $(BIN)
 
 $(TARGET): $(OBJ)
-	mkdir -p $(BINDIR)
+	mkdir -p $(dir $@)
 	$(CC) $(OBJ) $(LDFLAGS) -o $@
 
 $(BIN): $(TARGET)
 	$(OBJCOPY) -O binary $< $@
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
+build/%.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.S
+build/%.o: %.S
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(OBJDIR) $(BINDIR)
+	rm -rf build bin
 
 flash:
 	esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x0 $(BIN)
