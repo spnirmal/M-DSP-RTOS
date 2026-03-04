@@ -42,4 +42,4 @@ clean:
 flash:
 	esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x0 $(BIN)
 
-.PHONY: all clean flash
+.PHONY: all clean flashgit add .

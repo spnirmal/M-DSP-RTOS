@@ -1,4 +1,5 @@
 .global _start
+.global start_cpu
 .extern kernel_main
 .extern _bss_start
 .extern _bss_end
@@ -15,6 +16,9 @@ _start:
     movi a2, _bss_start
     movi a3, _bss_end
 
+start_cpu:
+    j _start
+    
 clear_bss:
     bgeu a2, a3, bss_done
     s32i a0, a2, 0
