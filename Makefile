@@ -1,36 +1,45 @@
-CC := gcc
-CFLAGS := -Wall -Wextra -g -std=gnu11
-LDFLAGS :=
+CC := xtensa-esp32s3-elf-gcc
+OBJCOPY := xtensa-esp32s3-elf-objcopy
 
-PORT ?= posix
+CFLAGS := -Wall -Wextra -Os -ffreestanding -nostdlib
+CFLAGS += -mlongcalls
+
+LDFLAGS := -T linker.ld -nostdlib
 
 SRCDIR := src
-PORTDIR := port/$(PORT)
-INCDIR := include
 OBJDIR := build
 BINDIR := bin
 
-CFLAGS += -I$(INCDIR)
-CFLAGS += -I$(PORTDIR)
-
 SRC := $(wildcard $(SRCDIR)/*.c)
-SRC += $(wildcard $(PORTDIR)/*.c)
+SRC += $(wildcard $(SRCDIR)/*.S)
 
-OBJ := $(patsubst %.c,$(OBJDIR)/%.o,$(SRC))
+OBJ := $(patsubst $(SRCDIR)/%, $(OBJDIR)/%, $(SRC:.c=.o))
+OBJ := $(OBJ:.S=.o)
 
-TARGET := $(BINDIR)/mdsp_rtos
+TARGET := $(BINDIR)/kernel.elf
+BIN := $(BINDIR)/kernel.bin
 
-all: $(TARGET)
+all: $(BIN)
 
 $(TARGET): $(OBJ)
-	@mkdir -p $(BINDIR)
-	$(CC) $(OBJ) -o $@
+	mkdir -p $(BINDIR)
+	$(CC) $(OBJ) $(LDFLAGS) -o $@
 
-$(OBJDIR)/%.o: %.c
-	@mkdir -p $(dir $@)
+$(BIN): $(TARGET)
+	$(OBJCOPY) -O binary $< $@
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.c
+	mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJDIR)/%.o: $(SRCDIR)/%.S
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(OBJDIR) $(BINDIR)
 
-.PHONY: all clean
+flash:
+	esptool.py --chip esp32s3 --port /dev/ttyUSB0 write_flash 0x0 $(BIN)
+
+.PHONY: all clean flash
