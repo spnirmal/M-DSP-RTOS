@@ -18,8 +18,11 @@ SECTIONS
     _start = .;
 
     *(.vectors*)
+
+    /* Xtensa literals must be before code */
+    *(.literal*)
     *(.text*)
-    
+
     . = ALIGN(16);
 } > iram
 
