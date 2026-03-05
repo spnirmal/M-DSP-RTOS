@@ -1,5 +1,7 @@
 #include "mdsp_rtos.h"
 
+void uart_print(const char *s);
+
 int main(void)
 {
     port_init();
@@ -9,8 +11,12 @@ int main(void)
     }
 }
 
+
 void kernel_main(void)
 {
-    while (1) {
+    uart_print("RTOS boot\n");
+
+    while (1)
+    {
     }
 }
