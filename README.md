@@ -57,9 +57,27 @@ M-DSP RTOS solves this by offering a **deterministic, cooperative execution mode
 ## 🧪 Build Instructions
 
 ```bash
-make clean && make
-./bin/mdsp_rtos
+# build for host simulator (Linux)
+make clean && make                    # generates bin/mdsp_rtos
+./bin/mdsp_rtos                      # run the ELF on your PC
 ```
+
+### Flashing to an ESP32‑S3 device
+```
+# requirements: xtensa-esp32s3 toolchain, esptool.py (Python package)
+# adjust PORT variable in Makefile or override on the command line
+make clean && make                  # produces bin/kernel.elf.bin image
+make flash                          # writes the image at 0x1000
+# open a serial monitor (115200) to watch boot messages
+```
+> **Note:** the ROM on the S3 has a built‑in first‑stage loader. it looks
+> for a valid ESP image header at the first 0x1000 boundary in flash. the
+> `elf2image` step above adds that header. you do *not* need a separate
+> ESP‑IDF bootloader for very simple apps, though you can flash one at
+> 0x0 if you want to add features (partitions, encryption, etc.).
+> just make sure the blob you flash contains a proper image header, or the
+> boot messages will once again be `invalid header: 0xffffffff`.
+
 
 Directory structure:
 
