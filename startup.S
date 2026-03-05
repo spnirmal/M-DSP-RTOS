@@ -1,9 +1,11 @@
 .global _start
+.global start_cpu
 .extern _bss_start
 .extern _bss_end
 .extern _stack_top
 .extern main
 
+start_cpu:
 _start:
     /* initialize stack */
     movi a1, _stack_top
