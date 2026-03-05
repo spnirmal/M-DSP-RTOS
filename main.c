@@ -2,21 +2,22 @@
 
 void uart_print(const char *s);
 
-int main(void)
-{
-    port_init();
-    rtos_init();
-
-    while (1) {
-    }
-}
-
-
 void kernel_main(void)
 {
     uart_print("RTOS boot\n");
 
     while (1)
     {
+    }
+}
+
+int main(void)
+{
+    port_init();
+    rtos_init();
+    kernel_main();
+    
+    /* kernel_main never returns, but just in case */
+    while (1) {
     }
 }
