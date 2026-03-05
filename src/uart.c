@@ -1,55 +1,29 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
 
-#define SIZE 10
+#define UART0_FIFO   (*(volatile uint32_t*)0x60000000)
+#define UART0_STATUS (*(volatile uint32_t*)0x6000001C)
 
-typedef struct Node{
-    int key;
-    int value;
-    struct Node *next;
-}Node;
+#define UART_TXFIFO_CNT_MASK 0x00FF0000
+#define UART_TXFIFO_CNT_SHIFT 16
+#define UART_FIFO_SIZE 128
 
-Node* table[SIZE];
-
-int hash(int key){
-    return key % SIZE;
+static void uart_wait_tx_ready(void)
+{
+    while (((UART0_STATUS & UART_TXFIFO_CNT_MASK) >> UART_TXFIFO_CNT_SHIFT) >= UART_FIFO_SIZE);
 }
 
-void insert(int key, int value){
-
-    int index = hash(key);
-
-    Node *newNode = malloc(sizeof(Node));
-    newNode->key = key;
-    newNode->value = value;
-    newNode->next = table[index];
-
-    table[index] = newNode;
+void uart_putc(char c)
+{
+    uart_wait_tx_ready();
+    UART0_FIFO = c;
 }
 
-Node* search(int key){
-
-    int index = hash(key);
-    Node *curr = table[index];
-
-    while(curr){
-        if(curr->key == key)
-            return curr;
-
-        curr = curr->next;
+void uart_print(const char *s)
+{
+    while (*s)
+    {
+        if (*s == '\n')
+            uart_putc('\r');
+        uart_putc(*s++);
     }
-
-    return NULL;
-}
-
-int main(){
-
-    insert(10,100);
-    insert(20,200);
-    insert(30,300);
-
-    Node *n = search(20);
-
-    if(n)
-        printf("%d\n",n->value);
 }
